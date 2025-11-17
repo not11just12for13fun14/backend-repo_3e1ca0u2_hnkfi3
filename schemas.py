@@ -12,7 +12,7 @@ Model name is converted to lowercase for the collection name:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Literal
 
 # Example schemas (replace with your own):
 
@@ -38,11 +38,22 @@ class Product(BaseModel):
     category: str = Field(..., description="Product category")
     in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+# Documentation app schemas
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Document(BaseModel):
+    """
+    Documentation collection schema
+    Collection name: "document"
+    """
+    title: str = Field(..., min_length=1, max_length=200)
+    slug: Optional[str] = Field(None, description="URL-friendly identifier")
+    content: str = Field(..., description="Markdown content of the document")
+    category: Literal["linux", "windows", "web"] = Field(
+        ..., description="Target platform for the doc"
+    )
+    tags: List[str] = Field(default_factory=list, description="Tags for searching and grouping")
+    cover_image: Optional[str] = Field(
+        None, description="Base64-encoded image data (data URL)"
+    )
+    cover_mime: Optional[str] = Field(None, description="MIME type for the image")
+    author: Optional[str] = Field(None, description="Author name")

@@ -21,11 +21,23 @@ db = None
 database_url = os.getenv("DATABASE_URL")
 database_name = os.getenv("DATABASE_NAME")
 
-if database_url and database_name:
-    _client = MongoClient(database_url)
-    db = _client[database_name]
+# Initialize client safely so the API can start even if DB is unreachable or SRV libs missing
+try:
+    if database_url and database_name:
+        _client = MongoClient(database_url, serverSelectionTimeoutMS=3000)
+        # Trigger a lightweight server check but ignore failures
+        try:
+            _client.server_info()
+        except Exception:
+            pass
+        db = _client[database_name]
+except Exception:
+    # Fallback to no DB to avoid crashing the server at import time
+    _client = None
+    db = None
 
 # Helper functions for common database operations
+
 def create_document(collection_name: str, data: Union[BaseModel, dict]):
     """Insert a single document with timestamp"""
     if db is None:
@@ -43,13 +55,14 @@ def create_document(collection_name: str, data: Union[BaseModel, dict]):
     result = db[collection_name].insert_one(data_dict)
     return str(result.inserted_id)
 
+
 def get_documents(collection_name: str, filter_dict: dict = None, limit: int = None):
     """Get documents from collection"""
     if db is None:
         raise Exception("Database not available. Check DATABASE_URL and DATABASE_NAME environment variables.")
-    
+
     cursor = db[collection_name].find(filter_dict or {})
     if limit:
         cursor = cursor.limit(limit)
-    
+
     return list(cursor)
